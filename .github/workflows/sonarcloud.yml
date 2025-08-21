@@ -11,20 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Lấy mã nguồn
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Cài JDK 8
       - name: Set up JDK 8
         uses: actions/setup-java@v3
         with:
           java-version: '8'
           distribution: 'temurin'
 
-      - name: Install dependencies
+      # Cài các công cụ cần thiết như tài liệu zm-build
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ant ant-optional ant-contrib ruby git maven build-essential debhelper
+          sudo apt-get install -y software-properties-common openjdk-8-jdk \
+            ant ant-optional ant-contrib ruby git maven build-essential debhelper wget unzip
 
+      # Cài SonarScanner CLI
       - name: Install SonarScanner
         run: |
           wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
@@ -32,15 +37,24 @@ jobs:
           echo "SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-5.0.1.3006-linux" >> $GITHUB_ENV
           echo "$SONAR_SCANNER_HOME/bin" >> $GITHUB_PATH
 
-      - name: Build zm-mailbox components
+      # Clone zm-build và build toàn bộ suite
+      - name: Clone zm-build and run build.pl
         run: |
-          export ANT_OPTS="-Dzimbra.buildinfo.version=8.7.6_GA"
-          cd zm-mailbox/native && ant clean compile publish-local deploy
-          cd ../common && ant clean compile publish-local deploy
-          cd ../soap && ant clean compile publish-local deploy
-          cd ../client && ant clean compile publish-local deploy
-          cd ../store && ant clean compile publish-local deploy
+          mkdir installer-build
+          cd installer-build
+          git clone https://github.com/Zimbra/zm-build.git
+          cd zm-build
+          ENV_CACHE_CLEAR_FLAG=true ./build.pl \
+            --ant-options -DskipTests=true \
+            --git-default-tag=10.1.0 \
+            --build-release-no=10.1.0 \
+            --build-type=FOSS \
+            --build-release=LIBERTY \
+            --build-release-candidate=GA \
+            --build-thirdparty-server=files.zimbra.com \
+            --no-interactive
 
+      # Chạy quét SonarCloud
       - name: SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -50,5 +64,10 @@ jobs:
             -Dsonar.organization=pentest101 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.sources=client,common,milter-conf,native,soap,store-conf \
-            -Dsonar.java.binaries=store/build
+            -Dsonar.sources=installer-build/zm-build/zm-mailbox/client,\
+installer-build/zm-build/zm-mailbox/common,\
+installer-build/zm-build/zm-mailbox/milter-conf,\
+installer-build/zm-build/zm-mailbox/native,\
+installer-build/zm-build/zm-mailbox/soap,\
+installer-build/zm-build/zm-mailbox/store-conf \
+            -Dsonar.java.binaries=installer-build/zm-build/zm-mailbox/store/build
