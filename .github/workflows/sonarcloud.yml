@@ -64,10 +64,6 @@ jobs:
             -Dsonar.organization=pentest101 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.sources=installer-build/zm-build/zm-mailbox/client,\
-installer-build/zm-build/zm-mailbox/common,\
-installer-build/zm-build/zm-mailbox/milter-conf,\
-installer-build/zm-build/zm-mailbox/native,\
-installer-build/zm-build/zm-mailbox/soap,\
-installer-build/zm-build/zm-mailbox/store-conf \
+            -Dsonar.sources=installer-build/zm-build/zm-mailbox/client,installer-build/zm-build/zm-mailbox/common,installer-build/zm-build/zm-mailbox/milter-conf,installer-build/zm-build/zm-mailbox/native,installer-build/zm-build/zm-mailbox/soap,installer-build/zm-build/zm-mailbox/store-conf \
             -Dsonar.java.binaries=installer-build/zm-build/zm-mailbox/store/build
+
