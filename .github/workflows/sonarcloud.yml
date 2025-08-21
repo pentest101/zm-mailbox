@@ -3,7 +3,7 @@ name: SonarCloud Scan (No Build)
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
     types: [opened, synchronize, reopened]
 
