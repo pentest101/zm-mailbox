@@ -1,34 +1,19 @@
-name: SonarCloud Scan (No Build - develop)
-
+name: Build
 on:
   push:
     branches:
       - develop
   pull_request:
-    branches:
-      - develop
     types: [opened, synchronize, reopened]
-
 jobs:
-  sonarcloud:
-    name: SonarCloud Analysis (No Build)
+  sonarqube:
+    name: SonarQube
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2️⃣ Run SonarCloud scan without build
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2.0.2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=ten_project
-            -Dsonar.organization=ten_org
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-            -Dsonar.sources=zm-mailbox
-            -Dsonar.java.binaries=.
