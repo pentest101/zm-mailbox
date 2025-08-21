@@ -1,15 +1,13 @@
-name: SonarCloud Scan
+name: Zimbra Build & SonarCloud Scan
 
 on:
   push:
-    branches:
-      - develop
+    branches: [develop]
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  sonarcloud:
-    name: SonarCloud
+  build-and-scan:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,17 +20,35 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 
-      - name: Install Apache Ant
-        run: sudo apt-get install ant -y
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ant ant-optional ant-contrib ruby git maven build-essential debhelper
 
-      - name: Build with Ant
-        run: ant clean compile
-
-      - name: Run SonarCloud Scan
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Install SonarScanner
         run: |
           wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
           unzip sonar-scanner-cli-*.zip
-          export PATH="$PATH:$(pwd)/sonar-scanner-*/bin"
-          sonar-scanner
+          echo "SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-5.0.1.3006-linux" >> $GITHUB_ENV
+          echo "$SONAR_SCANNER_HOME/bin" >> $GITHUB_PATH
+
+      - name: Build zm-mailbox components
+        run: |
+          export ANT_OPTS="-Dzimbra.buildinfo.version=8.7.6_GA"
+          cd zm-mailbox/native && ant clean compile publish-local deploy
+          cd ../common && ant clean compile publish-local deploy
+          cd ../soap && ant clean compile publish-local deploy
+          cd ../client && ant clean compile publish-local deploy
+          cd ../store && ant clean compile publish-local deploy
+
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=pentest101_zm-mailbox \
+            -Dsonar.organization=pentest101 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.sources=client,common,milter-conf,native,soap,store-conf \
+            -Dsonar.java.binaries=store/build
